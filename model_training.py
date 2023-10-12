@@ -11,10 +11,8 @@ from model import SimpleNN
 from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 
-def load_data(data_pth, batch_size):
-
-    feature_class = pd.read_csv(data_pth)
-    train_df, test_df = train_test_split(feature_class, test_size=0.2, random_state=42)
+def load_data(feature_class, batch_size):
+    train_df, test_df = train_test_split(feature_class, test_size=0.1, random_state=42)
 
     # making train data loader
     feature_torch = torch.tensor(train_df.drop('label',axis = 1).values, dtype=torch.float32)
@@ -48,7 +46,7 @@ def train(model, epochs, lr, train_loader, test_loader, gpu):
     y_test = []
 
     for epoch in range(epochs):
-        for i, (features, labels) in enumerate(train_loader):
+        for _, (features, labels) in enumerate(train_loader):
             
             # put data into gpu if available
             features, labels = features.to(device), labels.to(device)
@@ -62,7 +60,12 @@ def train(model, epochs, lr, train_loader, test_loader, gpu):
             labels_correct = torch.argmax(outputs, dim=1) == labels
 
         if_last = True if epoch == (epochs-1) else False 
+
+        # set model to evaluation mode
+        model.eval()
         valid_acc = validate(model, y_pred, y_test, last = if_last)
+        model.train()
+
         print(f'Epoch: {epoch+1}/{epochs}..',
             f'Training Loss: {running_loss/len(test_loader):.3f}',
             f'Training Accuracy: {100*len(labels_correct)/len(labels):.3f}%',
@@ -85,9 +88,6 @@ def validate(model, y_pred, y_test, last = False,):
 
     # train on gpu if available and specified by user
     device = 'cuda' if torch.cuda.is_available() and gpu else 'cpu'
-
-    # set model to evaluation mode
-    model.eval()
 
     correct = 0
     total = 0
@@ -134,6 +134,16 @@ def get_stats(training_loss_list, valid_acc_list, y_pred, y_test):
 
 if __name__ == '__main__' :
 
+    '''
+    DEFAULT VALUES FOR TRAINING
+        -- data_path = 'feature_class.csv'
+        -- epochs = 200
+        -- batch_size = 12
+        -- lr = 0.001
+        -- save_path = 'model.pth'
+        -- gpu = 0
+    '''
+
     # get the arguments from the user
     parser = argparse.ArgumentParser('Train Model for Yoga Pose Classification')
     data_path = parser.add_argument('--data_path', type=str, default='feature_class.csv')
@@ -145,9 +155,12 @@ if __name__ == '__main__' :
 
     args = parser.parse_args()
 
+    # read data
+    feature_class = pd.read_csv(args.data_path)
+
     # calling respective functions
-    model = SimpleNN(15)
-    train_loader, test_loader = load_data(args.data_path, args.batch_size)
+    model = SimpleNN(feature_class.shape[1]-1)
+    train_loader, test_loader = load_data(feature_class, args.batch_size)
     training_loss_list, valid_acc_list, y_pred, y_test, model = train(model, args.epochs, args.lr, train_loader, test_loader, args.gpu)
     get_stats(training_loss_list, valid_acc_list, y_pred, y_test)
 
