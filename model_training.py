@@ -6,8 +6,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import argparse
+import json
 from model import SimpleNN
-
 from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 
@@ -27,7 +27,7 @@ def load_data(feature_class, batch_size):
 
     return train_loader, test_loader
  
-def train(model, epochs, lr, train_loader, test_loader, gpu):
+def train(model, mapping,  epochs, lr, train_loader, test_loader, gpu):
 
     # define loss and optimizer
     loss = nn.CrossEntropyLoss()
@@ -78,7 +78,11 @@ def train(model, epochs, lr, train_loader, test_loader, gpu):
 
     # print the classification report
     y_pred = list(np.concatenate(y_pred))
-    target_names = ['tree','cobra','downdog_data','goddess','warrior','chair']
+
+    with open(mapping) as f:
+        mapping = json.load(f)
+
+    target_names = list(mapping.values())
     print('\n', classification_report(y_test, y_pred, target_names=target_names))
 
     return training_loss_list, valid_acc_list, y_pred, y_test, model
@@ -136,7 +140,7 @@ if __name__ == '__main__' :
 
     '''
     DEFAULT VALUES FOR TRAINING
-        -- data_path = 'feature_class.csv'
+        -- data_path = 'pca_features.csv'
         -- epochs = 200
         -- batch_size = 12
         -- lr = 0.001
@@ -145,14 +149,14 @@ if __name__ == '__main__' :
     '''
 
     # get the arguments from the user
-    parser = argparse.ArgumentParser('Train Model for Yoga Pose Classification')
-    data_path = parser.add_argument('--data_path', type=str, default='feature_class.csv')
-    epochs = parser.add_argument('--epochs', type=int, default=200)
-    batch_size = parser.add_argument('--batch_size', type=int, default=12)
-    lr = parser.add_argument('--lr', type=float, default=0.001)
-    save_path = parser.add_argument('--save_path', type=str, default='model.pth')
-    gpu = parser.add_argument('--gpu', type=int, default=0)
-
+    parser = argparse.ArgumentParser(description='Train Model for Yoga Pose Classification')
+    data_path = parser.add_argument('--data_path', type=str, default='pca_features.csv', help='path to model')
+    mapping = parser.add_argument('--mapping', type=str, default='mapping.json', help='path to mapping file')
+    epochs = parser.add_argument('--epochs', type=int, default=200, help='number of epochs')
+    batch_size = parser.add_argument('--batch_size', type=int, default=12, help='batch size for training and testing')
+    lr = parser.add_argument('--lr', type=float, default=0.001, help='learning rate for training')
+    save_path = parser.add_argument('--save_path', type=str, default='model.pth', help='path to save model')
+    gpu = parser.add_argument('--gpu', type=int, default=0, help='use gpu for training')
     args = parser.parse_args()
 
     # read data
@@ -161,7 +165,7 @@ if __name__ == '__main__' :
     # calling respective functions
     model = SimpleNN(feature_class.shape[1]-1)
     train_loader, test_loader = load_data(feature_class, args.batch_size)
-    training_loss_list, valid_acc_list, y_pred, y_test, model = train(model, args.epochs, args.lr, train_loader, test_loader, args.gpu)
+    training_loss_list, valid_acc_list, y_pred, y_test, model = train(model, args.mapping, args.epochs, args.lr, train_loader, test_loader, args.gpu)
     get_stats(training_loss_list, valid_acc_list, y_pred, y_test)
 
     # save the model

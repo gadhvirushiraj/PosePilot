@@ -1,5 +1,6 @@
 import cv2
 import math
+import json
 import torch
 from torch import nn
 import pandas as pd
@@ -7,17 +8,25 @@ import mediapipe as mp
 import matplotlib.pyplot as plt
 import argparse
 from model import SimpleNN
-
+from itertools import combinations
+import numpy as np
 
 def get_landmarks(img_pth, check_landmarks):
 
     # load mediapipe
     mp_pose = mp.solutions.pose
     mp_drawing = mp.solutions.drawing_utils
-    mp_drawing_styles = mp.solutions.drawing_styles
 
-    custom_style = mp_drawing_styles.get_default_pose_landmarks_style()
-    custom_connections = list(mp_pose.POSE_CONNECTIONS)
+    custom_style = mp.solutions.drawing_styles.DrawingSpec(
+        color=(0, 255, 0),  # Color of keypoints
+        thickness=12,        # Thickness of keypoints
+        circle_radius=7,    # Radius of keypoints
+    )
+    
+    connection_style = mp.solutions.drawing_styles.DrawingSpec(
+        color=(255, 255, 255),  # Color of connection lines
+        thickness=5,        # Increase the thickness for connection lines
+    )
 
     # load image
     img = cv2.imread(img_pth)
@@ -32,8 +41,8 @@ def get_landmarks(img_pth, check_landmarks):
         if results.pose_landmarks:
             # Draw the landmarks on the image
             mp_drawing.draw_landmarks(
-                img, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-        
+                img, results.pose_landmarks, mp_pose.POSE_CONNECTIONS, custom_style, connection_style)
+            
             # Save the landmarks in a DataFrame
             for landmark in results.pose_landmarks.landmark:
                 data += [landmark.x, landmark.y, landmark.z, landmark.visibility]
@@ -45,7 +54,8 @@ def get_landmarks(img_pth, check_landmarks):
 
     return img, data
 
-def angle(self, point1, point2, point3):
+
+def angle(point1, point2, point3):
     """ Calculate angle between two lines """
     if(point1==(0,0) or point2==(0,0) or point3==(0,0)):
         return 0
@@ -74,65 +84,54 @@ def get_features(data):
                         "right thumb","left hip","right hip","left knee",
                         "right knee","left ankle","right ankle","left heel",
                         "right heel", "left foot index","right foot index"]
-
     col_name = []
     for i in body_pose_landmarks:
         col_name += [i + ' X', i + ' Y', i + ' Z', i + ' V']
 
     # rename columns
-    final_df = pd.DataFrame(columns=col_name)
-    final_df.loc[0] = data
+    landmark_df = pd.DataFrame(columns=col_name)
+    landmark_df.loc[0] = data
 
-    final_df = final_df[final_df.columns[~final_df.columns.str.contains(' V')]]
+    # read top_100_features_names.json
+    top_features_names = []
+    with open('top_100_features_names.json') as json_file:
+        top_features_names = json.load(json_file)
+    
+    # calculate all the angles form the top feature names and add to top feature names
+    feature_df = pd.DataFrame(columns=top_features_names.keys())
+    for i in top_features_names.keys():
+        pt1 = (landmark_df[top_features_names[i][0] + ' X'].values, landmark_df[top_features_names[i][0] + ' Y'].values)
+        pt2 = (landmark_df[top_features_names[i][1] + ' X'].values, landmark_df[top_features_names[i][1] + ' Y'].values)
+        pt3 = (landmark_df[top_features_names[i][2] + ' X'].values, landmark_df[top_features_names[i][2] + ' Y'].values)
+        feature_df.loc[0, i] = angle(pt1, pt2, pt3)
 
-    '''
-    f1: angle between left shoulder, left elbow, left wrist
-    f2: angle between right shoulder, right elbow, right wrist
-    f3: angle between left shoulder, left hip, left knee
-    f4: angle between right shoulder, right hip, right knee
-    f5: angle between left hip, left knee, left ankle
-    f6: angle between right hip, right knee, right ankle
-    f7: angle between nose, left shoulder, left hip
-    f8: angle between nose, right shoulder, right hip
-    f9: angle between left shoulder, nose, right shoulder
-    f10: angle between left knee, left ankle, left foot index
-    f11: angle between right knee, right ankle, right foot index
-    f12: angle between left index, left wrist, left thumb
-    f13: angle between right index, right wrist, right thumb
-    f14: angle between left shoulder, left hip, left foot index
-    f15: angle between right shoulder, right hip, right foot index
-    '''
+    # Read scaler from scaler.npy
+    scaler = np.load('scaler.npy', allow_pickle=True).item()  # Load the scaler as a dictionary
 
-    feature_df = pd.DataFrame()
+    # Apply scaler
+    feature_df = scaler.transform(feature_df)
 
-    feature_df['f1'] = final_df.apply(lambda x: angle(x, (x['left shoulder X'], x['left shoulder Y']), (x['left elbow X'], x['left elbow Y']), (x['left wrist X'], x['left wrist Y'])), axis=1)
-    feature_df['f2'] = final_df.apply(lambda x: angle(x, (x['right shoulder X'], x['right shoulder Y']), (x['right elbow X'], x['right elbow Y']), (x['right wrist X'], x['right wrist Y'])), axis=1)
-    feature_df['f3'] = final_df.apply(lambda x: angle(x, (x['left shoulder X'], x['left shoulder Y']), (x['left hip X'], x['left hip Y']), (x['left knee X'], x['left knee Y'])), axis=1)
-    feature_df['f4'] = final_df.apply(lambda x: angle(x, (x['right shoulder X'], x['right shoulder Y']), (x['right hip X'], x['right hip Y']), (x['right knee X'], x['right knee Y'])), axis=1)
-    feature_df['f5'] = final_df.apply(lambda x: angle(x, (x['left hip X'], x['left hip Y']), (x['left knee X'], x['left knee Y']), (x['left ankle X'], x['left ankle Y'])), axis=1)
-    feature_df['f6'] = final_df.apply(lambda x: angle(x, (x['right hip X'], x['right hip Y']), (x['right knee X'], x['right knee Y']), (x['right ankle X'], x['right ankle Y'])), axis=1)
-    feature_df['f7'] = final_df.apply(lambda x: angle(x, (x['nose X'], x['nose Y']), (x['left shoulder X'], x['left shoulder Y']), (x['left hip X'], x['left hip Y'])), axis=1)
-    feature_df['f8'] = final_df.apply(lambda x: angle(x, (x['nose X'], x['nose Y']), (x['right shoulder X'], x['right shoulder Y']), (x['right hip X'], x['right hip Y'])), axis=1)
-    feature_df['f9'] = final_df.apply(lambda x: angle(x, (x['left shoulder X'], x['left shoulder Y']), (x['nose X'], x['nose Y']), (x['right shoulder X'], x['right shoulder Y'])), axis=1)
-    feature_df['f10'] = final_df.apply(lambda x: angle(x, (x['left knee X'], x['left knee Y']), (x['left ankle X'], x['left ankle Y']), (x['left foot index X'], x['left foot index Y'])), axis=1)
-    feature_df['f11'] = final_df.apply(lambda x: angle(x, (x['right knee X'], x['right knee Y']), (x['right ankle X'], x['right ankle Y']), (x['right foot index X'], x['right foot index Y'])), axis=1)
-    feature_df['f12'] = final_df.apply(lambda x: angle(x, (x['left index X'], x['left index Y']), (x['left wrist X'], x['left wrist Y']), (x['left thumb X'], x['left thumb Y'])), axis=1)
-    feature_df['f13'] = final_df.apply(lambda x: angle(x, (x['right index X'], x['right index Y']), (x['right wrist X'], x['right wrist Y']), (x['right thumb X'], x['right thumb Y'])), axis=1)
-    feature_df['f14'] = final_df.apply(lambda x: angle(x, (x['left shoulder X'], x['left shoulder Y']), (x['left hip X'], x['left hip Y']), (x['left foot index X'], x['left foot index Y'])), axis=1)
-    feature_df['f15'] = final_df.apply(lambda x: angle(x, (x['right shoulder X'], x['right shoulder Y']), (x['right hip X'], x['right hip Y']), (x['right foot index X'], x['right foot index Y'])), axis=1)
+    # Read PCA components from pca_components.npy
+    pca_components = np.load('pca_components.npy', allow_pickle=True)
 
+    # Apply PCA
+    feature_df = np.dot(feature_df, pca_components.T)
 
     return feature_df
 
+
 def predict(model_path, print_prob):
 
-    model = SimpleNN(15)
+    model = SimpleNN(feature_df.shape[1])
     checkpoint = torch.load(model_path)
     model.load_state_dict(checkpoint)
     model.eval()
 
-    input_data = torch.tensor(feature_df.values, dtype=torch.float32)
-    target_names = ['tree','cobra','downdog_data','goddess','warrior','chair']
+    input_data = torch.tensor(feature_df, dtype=torch.float32)
+
+    # reading mapping.json file for target names
+    with open('mapping.json') as json_file:
+        target_names = json.load(json_file)
 
     # Make predictions
     with torch.no_grad():
@@ -142,20 +141,19 @@ def predict(model_path, print_prob):
 
     # Get predicted class
     pred_idx = torch.argmax(pred, dim=1)
-    print('\nYoga Pose: ',target_names[pred_idx])
+    print('\nPredicted Yoga Pose: ',target_names[str(int(pred_idx))])
 
 
 
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser(description='Predict Yoga Pose')
-    parser.add_argument('--model', type=str, default='model.pth', help='Path to model')
-    parser.add_argument('--image', type=str, help='Path to image')
-    parser.add_argument('--check_landmarks', action='store_true', help='Display landmark detected image')
-    parser.add_argument('--print_prob', action='store_true', help='Print probability of each class')
+    parser.add_argument('--model', type=str, default='model.pth', help='path to model')
+    parser.add_argument('--image', type=str, help='path to image')
+    parser.add_argument('--check_landmarks', action='store_true', help='display landmark detected image')
+    parser.add_argument('--print_prob', action='store_true', help='print probability of each class')
 
     args = parser.parse_args()
-
     img, data = get_landmarks(args.image, args.check_landmarks)
     feature_df = get_features(data)
     predict(args.model, args.print_prob)
