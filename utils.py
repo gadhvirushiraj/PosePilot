@@ -5,6 +5,8 @@ This module contains utility functions for the project.
 import numpy as np
 from scipy.signal import find_peaks
 
+import pandas as pd
+
 
 def cal_angle(point1, point2, point3):
     """
@@ -157,6 +159,9 @@ def structure_data(data):
     data.columns = col_name
     data = data[data.columns[~data.columns.str.contains(" V")]]
 
+    return data, body_pose_landmarks
+
+def update_body_pose_landmarks(data,body_pose_landmarks)
     # remove certain body landmarks
     remove_list = [
         "left eye",
@@ -182,3 +187,36 @@ def structure_data(data):
         data = data[data.columns[~data.columns.str.contains(i)]]
 
     return data, body_pose_landmarks
+
+
+def correction_angles_convert(final_df):
+#     f1: angle between left shoulder, left elbow, left wrist
+#     f2: angle between right shoulder, right elbow, right wrist
+#     f3: angle between left shoulder, left hip, left knee
+#     f4: angle between right shoulder, right hip, right knee
+#     f5: angle between left hip, left knee, left ankle
+#     f6: angle between right hip, right knee, right ankle
+#     f7: angle between nose, left shoulder, left hip
+#     f8: angle between nose, right shoulder, right hip
+#     f9: angle between left shoulder, nose, right shoulder
+#     f10: angle between left knee, left ankle, left foot index
+#     f11: angle between right knee, right ankle, right foot index
+#     f12: angle between left index, left wrist, left thumb
+#     f13: angle between right index, right wrist, right thumb
+#     f14: angle between left shoulder, left hip, left foot index
+#     f15: angle between right shoulder, right hip, right foot index
+
+    feature_df = pd.DataFrame()
+
+    feature_df['f1'] = final_df.apply(lambda x: cal_angle(x, (x['left shoulder_X'], x['left shoulder_Y']), (x['left elbow_X'], x['left elbow_Y']), (x['left wrist_X'], x['left wrist_Y'])), axis=1)
+    feature_df['f2'] = final_df.apply(lambda x: cal_angle(x, (x['right shoulder_X'], x['right shoulder_Y']), (x['right elbow_X'], x['right elbow_Y']), (x['right wrist_X'], x['right wrist_Y'])), axis=1)
+    feature_df['f3'] = final_df.apply(lambda x: cal_angle(x, (x['left shoulder_X'], x['left shoulder_Y']), (x['left hip_X'], x['left hip_Y']), (x['left knee_X'], x['left knee_Y'])), axis=1)
+    feature_df['f4'] = final_df.apply(lambda x: cal_angle(x, (x['right shoulder_X'], x['right shoulder_Y']), (x['right hip_X'], x['right hip_Y']), (x['right knee_X'], x['right knee_Y'])), axis=1)
+    feature_df['f5'] = final_df.apply(lambda x: cal_angle(x, (x['left hip_X'], x['left hip_Y']), (x['left knee_X'], x['left knee_Y']), (x['left ankle_X'], x['left ankle_Y'])), axis=1)
+    feature_df['f6'] = final_df.apply(lambda x: cal_angle(x, (x['right hip_X'], x['right hip_Y']), (x['right knee_X'], x['right knee_Y']), (x['right ankle_X'], x['right ankle_Y'])), axis=1)
+    feature_df['f7'] = final_df.apply(lambda x: cal_angle(x, (x['left shoulder_X'], x['left shoulder_Y']), (x['nose_X'], x['nose_Y']), (x['right shoulder_X'], x['right shoulder_Y'])), axis=1)
+    feature_df['f8'] = final_df.apply(lambda x: cal_angle(x, (x['left elbow_X'], x['left elbow_Y']), (x['left shoulder_X'], x['left shoulder_Y']), (x['left hip_X'], x['left hip_Y'])), axis=1)
+    feature_df['f9'] = final_df.apply(lambda x: cal_angle(x, (x['right elbow_X'], x['right elbow_Y']), (x['right shoulder_X'], x['right shoulder_Y']), (x['right hip_X'], x['right hip_Y'])), axis=1)
+
+    return feature_df
+

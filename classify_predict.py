@@ -7,7 +7,7 @@ from itertools import combinations
 import torch
 
 from classify_model import ClassifyPose
-from utils import structure_data, cal_angle, cal_error, selected_top_frames
+from utils import structure_data, cal_angle, cal_error, selected_top_frames, update_body_pose_landmarks
 
 
 def feature_classify(data):
@@ -26,6 +26,8 @@ def feature_classify(data):
     """
 
     feature_df, body_pose_landmarks = structure_data(data)
+    
+    feature_df, body_pose_landmarks = update_body_pose_landmarks(feature_df,body_pose_landmarks)
 
     # generate a mapping for feature to angle reference
     mapping = {}
