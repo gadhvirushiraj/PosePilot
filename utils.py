@@ -230,7 +230,7 @@ def correction_angles_convert(final_df):
 
 
 
-def reduce(df,limit):
+def reduce_rows(df,limit):
     """
     Reduces the number of rows in the DataFrame to the target length by removing rows with the smallest error.
 
@@ -257,7 +257,7 @@ def reduce(df,limit):
     return df
 
 
-def additbaby(df,limit):
+def add_rows(df,limit):
     """
     Increases the number of rows in the DataFrame to the target length 
     by interpolating new rows at the highest error points.
@@ -310,7 +310,7 @@ def equal_rows(data,pose,limit):
     if data.shape[0] < limit:
         new['label'] = data['label']
         data.drop(['label'],axis=1)
-        data = additbaby(data,limit)
+        data = add_rows(data,limit)
         data['label'] = new['label']
 
     
@@ -319,7 +319,7 @@ def equal_rows(data,pose,limit):
     if data.shape[0] > limit:
         new['label'] = data['label']
         data.drop(['label'],axis=1)
-        data = reduce(data,limit)
+        data = reduce_rows(data,limit)
         data['label'] = new['label']
 
 
