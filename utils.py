@@ -2,10 +2,18 @@
 This module contains utility functions for the project.
 """
 
+import scipy.interpolate
+
+import warnings
+warnings.filterwarnings('ignore')
+
+
 import numpy as np
 from scipy.signal import find_peaks
 
 import pandas as pd
+
+
 
 
 def cal_angle(point1, point2, point3):
@@ -220,3 +228,99 @@ def correction_angles_convert(final_df):
 
     return feature_df
 
+
+
+def reduce(df,limit):
+    """
+    Reduces the number of rows in the DataFrame to the target length by removing rows with the smallest error.
+
+    Parameters:
+    target_length (int): The desired number of rows in the DataFrame.
+
+    Returns:
+    The DataFrame reduced to the target length.
+    """
+
+    target_length = limit
+    
+    while len(df) > target_length:
+        # Find the index of the row with the minimum error
+        min_error_index = df['error'].idxmin() 
+
+        # Remove the row with the minimum error
+        df = df.drop(min_error_index).reset_index(drop=True)
+
+        # recalculate error
+        df.drop('error', axis=1, inplace=True)
+        df = cal_error(df)
+
+    return df
+
+
+def additbaby(df,limit):
+    """
+    Increases the number of rows in the DataFrame to the target length 
+    by interpolating new rows at the highest error points.
+
+    """
+
+    target_length = limit
+
+    while len(df) < target_length:
+        # get the highest error index
+        max_error_index = df['error'].idxmax()
+
+        # decide +1 or -1 index to add; find difference between errors
+        if np.sum(np.std(df.loc[max_error_index: max_error_index + 1][['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9']])) < np.sum(np.std(df.loc[max_error_index - 1: max_error_index][['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9']])):
+            offset = -0.5
+        else:
+            offset = 0.5
+
+        # Interpolate new values for each feature at the decided position
+        features = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9']
+        new_values = []
+        for f in features:
+
+            x = range(len(df))
+            y = df[f]
+            interp_point = min(max_error_index + offset, max(x))
+            interp_value = scipy.interpolate.interp1d(x, y, kind='linear')(interp_point)
+            new_values.append(interp_value)
+
+        # Insert the interpolated row into the dataframe
+        new_row = pd.DataFrame([new_values], columns=features)
+        df = pd.concat([df.iloc[:max_error_index], new_row, df.iloc[max_error_index:]]).reset_index(drop=True)
+
+        # Recalculate the errors
+        df.drop('error', axis=1, inplace=True)
+        df = cal_error(df)
+
+    return df
+
+
+def equal_rows(data,pose,limit):
+
+    """
+    Adjusts the number of rows in the input data to match the target length by either reducing or adding rows.
+
+    """
+
+    # Add rows if the current number of rows is less than the target length
+    new = pd.DataFrame()
+    if data.shape[0] < limit:
+        new['label'] = data['label']
+        data.drop(['label'],axis=1)
+        data = additbaby(data,limit)
+        data['label'] = new['label']
+
+    
+
+    # Reduce rows if the current number of rows is more than the target length
+    if data.shape[0] > limit:
+        new['label'] = data['label']
+        data.drop(['label'],axis=1)
+        data = reduce(data,limit)
+        data['label'] = new['label']
+
+
+    return data
