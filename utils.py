@@ -13,6 +13,8 @@ from scipy.signal import find_peaks
 
 import pandas as pd
 
+warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
+
 
 
 
@@ -66,13 +68,17 @@ def cal_error(data):
         The original DataFrame with an additional column for the error values.
     """
 
+    print('shape',data.shape)
+
     error_list = []
-    for idx, _ in enumerate(data):
+    for idx in range(len(data)):
         temp = []
         for col in data.columns:
-            window = data[col].loc[max(idx - 3, 0) : min(idx + 2, len(data))]
+            window = data[col].iloc[max(idx-3, 0):min(idx+2, len(data))]
             temp.append(np.std(window.values))
         error_list.append(np.mean(temp))
+
+    print('length of error list', len(error_list))
 
     data["error"] = error_list
     return data
@@ -169,7 +175,7 @@ def structure_data(data):
 
     return data, body_pose_landmarks
 
-def update_body_pose_landmarks(data,body_pose_landmarks)
+def update_body_pose_landmarks(data,body_pose_landmarks):
     # remove certain body landmarks
     remove_list = [
         "left eye",
