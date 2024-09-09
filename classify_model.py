@@ -24,7 +24,7 @@ class ClassifyPose(nn.Module):
         # Attention layer
         # self.attention = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=8, batch_first=True)
 
-        self.fc = nn.Linear(hidden_size * sequence_length, 512)
+        self.fc = nn.Linear(hidden_size, 512)
         self.fc2 = nn.Linear(512, 64)
         self.fc3 = nn.Linear(64, num_classes)
         self.leaky_relu = nn.ReLU(0.1)
@@ -37,7 +37,7 @@ class ClassifyPose(nn.Module):
 
         # Decode the hidden state of the last time step
         # out.shape = (batch_size, seq_length, hidden_size)
-        out = out.contiguous().view(out.size(0), -1)
+        out = out[:, -1, :]
         out = self.fc(out)
         out = self.leaky_relu(out)
         out = self.fc2(out)

@@ -25,7 +25,7 @@ def scale_data(data_input, scalers):
         data_input.iloc[:, i] = scaler.transform(data_input.iloc[:, i].values.reshape(-1, 1))
     return data_input
 
-def prepare_data(data_input, desired_frame_count=20,seq_length):
+def prepare_data(data_input, seq_length, desired_frame_count=85):
     '''
     prepares the data by finding peaks in the input data.
 
@@ -36,19 +36,19 @@ def prepare_data(data_input, desired_frame_count=20,seq_length):
     data_input = data_input.iloc[frames_selected]
     return data_input.reset_index(drop=True), frames_selected
 
-def load_model(device, input_size, hidden_size, num_layers, num_output_features):
+def load_model(device, input_size, hidden_size, num_layers, num_output_features,pose):
     '''
     Loading the model which is stored locally and importing RNN model from the correction_model.py
     '''
     model = RNN(input_size, hidden_size, num_layers, num_output_features).to(device)
-    model.load_state_dict(torch.load(f"correction_chair.pth"))
+    model.load_state_dict(torch.load(f"models/correction_{pose}.pth"))
     model.eval()
     return model
 
 def test(data_input, device,pose):
     # Prepare data by finding frames within the specified sequence length.
 
-    data_input = equal_rows(data_input,pose,seq_length=85)
+    data_input = equal_rows(data_input,pose,85)
     data_input, frames_selected = prepare_data(data_input,seq_length=85)
 
     data_original = data_input.copy()
@@ -61,7 +61,7 @@ def test(data_input, device,pose):
     # model parameters
     window_size = 1
     input_size = 9 * window_size
-    hidden_size = 128
+    hidden_size = 256
     num_layers = 1
     num_output_features = 9
 
@@ -72,7 +72,7 @@ def test(data_input, device,pose):
 
     model = load_model(device, input_size, hidden_size, num_layers, num_output_features,pose)
     data_input_tensor = torch.tensor(data_input.values, dtype=torch.float32).to(device)
-    outputs, _ = model(data_input_tensor)
+    outputs = model(data_input_tensor)
 
     #converting the model outputs into numpy array
 
@@ -162,7 +162,10 @@ def plot_results(data_original, data_input, outputs,frames_selected):
 
 def corr_predict(pose, data):
 
-    data = structure_data(data)
+    data, _ = structure_data(data)
+
+    print()
+    print(f"type of dataframe {type(data)}")
 
     data = correction_angles_convert(data)
 

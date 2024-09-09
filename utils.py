@@ -68,7 +68,7 @@ def cal_error(data):
         The original DataFrame with an additional column for the error values.
     """
 
-    print('shape',data.shape)
+    # print('shape',data.shape)
 
     error_list = []
     for idx in range(len(data)):
@@ -78,7 +78,7 @@ def cal_error(data):
             temp.append(np.std(window.values))
         error_list.append(np.mean(temp))
 
-    print('length of error list', len(error_list))
+    # print('length of error list', len(error_list))
 
     data["error"] = error_list
     return data
@@ -222,15 +222,15 @@ def correction_angles_convert(final_df):
 
     feature_df = pd.DataFrame()
 
-    feature_df['f1'] = final_df.apply(lambda x: cal_angle(x, (x['left shoulder_X'], x['left shoulder_Y']), (x['left elbow_X'], x['left elbow_Y']), (x['left wrist_X'], x['left wrist_Y'])), axis=1)
-    feature_df['f2'] = final_df.apply(lambda x: cal_angle(x, (x['right shoulder_X'], x['right shoulder_Y']), (x['right elbow_X'], x['right elbow_Y']), (x['right wrist_X'], x['right wrist_Y'])), axis=1)
-    feature_df['f3'] = final_df.apply(lambda x: cal_angle(x, (x['left shoulder_X'], x['left shoulder_Y']), (x['left hip_X'], x['left hip_Y']), (x['left knee_X'], x['left knee_Y'])), axis=1)
-    feature_df['f4'] = final_df.apply(lambda x: cal_angle(x, (x['right shoulder_X'], x['right shoulder_Y']), (x['right hip_X'], x['right hip_Y']), (x['right knee_X'], x['right knee_Y'])), axis=1)
-    feature_df['f5'] = final_df.apply(lambda x: cal_angle(x, (x['left hip_X'], x['left hip_Y']), (x['left knee_X'], x['left knee_Y']), (x['left ankle_X'], x['left ankle_Y'])), axis=1)
-    feature_df['f6'] = final_df.apply(lambda x: cal_angle(x, (x['right hip_X'], x['right hip_Y']), (x['right knee_X'], x['right knee_Y']), (x['right ankle_X'], x['right ankle_Y'])), axis=1)
-    feature_df['f7'] = final_df.apply(lambda x: cal_angle(x, (x['left shoulder_X'], x['left shoulder_Y']), (x['nose_X'], x['nose_Y']), (x['right shoulder_X'], x['right shoulder_Y'])), axis=1)
-    feature_df['f8'] = final_df.apply(lambda x: cal_angle(x, (x['left elbow_X'], x['left elbow_Y']), (x['left shoulder_X'], x['left shoulder_Y']), (x['left hip_X'], x['left hip_Y'])), axis=1)
-    feature_df['f9'] = final_df.apply(lambda x: cal_angle(x, (x['right elbow_X'], x['right elbow_Y']), (x['right shoulder_X'], x['right shoulder_Y']), (x['right hip_X'], x['right hip_Y'])), axis=1)
+    feature_df['f1'] = final_df.apply(lambda x: cal_angle((x['left shoulder_X'], x['left shoulder_Y']), (x['left elbow_X'], x['left elbow_Y']), (x['left wrist_X'], x['left wrist_Y'])), axis=1)
+    feature_df['f2'] = final_df.apply(lambda x: cal_angle((x['right shoulder_X'], x['right shoulder_Y']), (x['right elbow_X'], x['right elbow_Y']), (x['right wrist_X'], x['right wrist_Y'])), axis=1)
+    feature_df['f3'] = final_df.apply(lambda x: cal_angle((x['left shoulder_X'], x['left shoulder_Y']), (x['left hip_X'], x['left hip_Y']), (x['left knee_X'], x['left knee_Y'])), axis=1)
+    feature_df['f4'] = final_df.apply(lambda x: cal_angle((x['right shoulder_X'], x['right shoulder_Y']), (x['right hip_X'], x['right hip_Y']), (x['right knee_X'], x['right knee_Y'])), axis=1)
+    feature_df['f5'] = final_df.apply(lambda x: cal_angle((x['left hip_X'], x['left hip_Y']), (x['left knee_X'], x['left knee_Y']), (x['left ankle_X'], x['left ankle_Y'])), axis=1)
+    feature_df['f6'] = final_df.apply(lambda x: cal_angle((x['right hip_X'], x['right hip_Y']), (x['right knee_X'], x['right knee_Y']), (x['right ankle_X'], x['right ankle_Y'])), axis=1)
+    feature_df['f7'] = final_df.apply(lambda x: cal_angle((x['left shoulder_X'], x['left shoulder_Y']), (x['nose_X'], x['nose_Y']), (x['right shoulder_X'], x['right shoulder_Y'])), axis=1)
+    feature_df['f8'] = final_df.apply(lambda x: cal_angle((x['left elbow_X'], x['left elbow_Y']), (x['left shoulder_X'], x['left shoulder_Y']), (x['left hip_X'], x['left hip_Y'])), axis=1)
+    feature_df['f9'] = final_df.apply(lambda x: cal_angle((x['right elbow_X'], x['right elbow_Y']), (x['right shoulder_X'], x['right shoulder_Y']), (x['right hip_X'], x['right hip_Y'])), axis=1)
 
     return feature_df
 
@@ -312,10 +312,11 @@ def equal_rows(data,pose,limit):
     """
 
     # Add rows if the current number of rows is less than the target length
+    data['label'] = pose
     new = pd.DataFrame()
     if data.shape[0] < limit:
         new['label'] = data['label']
-        data.drop(['label'],axis=1)
+        data.drop(['label'],inplace=True,axis=1)
         data = add_rows(data,limit)
         data['label'] = new['label']
 
@@ -324,7 +325,7 @@ def equal_rows(data,pose,limit):
     # Reduce rows if the current number of rows is more than the target length
     if data.shape[0] > limit:
         new['label'] = data['label']
-        data.drop(['label'],axis=1)
+        data.drop(['label'],inplace=True,axis=1)
         data = reduce_rows(data,limit)
         data['label'] = new['label']
 

@@ -55,7 +55,7 @@ def feature_classify(data):
     return final_df
 
 
-def config_model(path="./models/classify-model.pth"):
+def config_model(path="./models/classify-pose-lstm.pth"):
     """
     Configure the classifier model.
 
