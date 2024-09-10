@@ -24,13 +24,15 @@ Incorrectly performed *Utkatasana* pose [elbows should be bent close to a 90° a
 
 #### Correction Graph
 
-![Correction Graph](./assets/CorrectionGraph.png)
+![Correction Graph](./assets/Correction-False1.png)
 
 #### GUI Output
+
+![GUI Output](./assets/GUI-False1.png)
 
 ### Dataset
 
 Our inhouse was created with videos from four angles, featuring 14 participants (ages 17-25) performing six poses. Frame-by-frame keypoint extraction using Mediapipe identified 33 keypoints, with 17 used to compute 680 angles for pose analysis. The dataset contains 336 videos, filmed indoors with controlled lighting.
 
-![dataset](./assets/dataset.png)
+![dataset](./assets/Dataset.png)
 
